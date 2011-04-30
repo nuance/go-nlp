@@ -1,4 +1,4 @@
-package gnlp
+package counter
 
 import "math"
 
@@ -8,12 +8,12 @@ type Counter struct {
 	base float64
 }
 
-func NewCounter(base float64) *Counter {
+func New(base float64) *Counter {
 	return &Counter{make(map[string] float64), base}
 }
 
 // Return a value for a key (falling back to the default)
-func (c Counter) Get(k string) float64 {
+func (c *Counter) Get(k string) float64 {
 	v, ok := c.values[k]
 
 	if ok {
@@ -32,7 +32,7 @@ func (c *Counter) Set(k string, v float64) {
 }
 
 // Return a list of keys for this counter
-func (c Counter) Keys() []string {
+func (c *Counter) Keys() []string {
 	result := make([]string, len(c.values))
 
 	for k, v := range c.values {
@@ -71,8 +71,8 @@ func mergeKeys(a, b []string) <-chan string {
 
 // Apply an operation on two counters, returning new counter with keys
 // defined by the keys function
-func operate(a, b Counter, op func (a, b float64) float64, keys func(a, b []string) <-chan string) *Counter {
-	result := NewCounter(op(a.base, b.base))
+func operate(a, b *Counter, op func (a, b float64) float64, keys func(a, b []string) <-chan string) *Counter {
+	result := New(op(a.base, b.base))
 
 	for k := range keys(a.Keys(), b.Keys()) {
 		result.Set(k, op(a.Get(k), b.Get(k)))
@@ -82,28 +82,28 @@ func operate(a, b Counter, op func (a, b float64) float64, keys func(a, b []stri
 }
 
 // Add a to b, returning a new counter
-func Add(a, b Counter) *Counter {
+func Add(a, b *Counter) *Counter {
 	return operate(a, b, func (a, b float64) float64 { return a + b }, mergeKeys)
 }
 
 // Subtract b from a, returning a new counter
-func Subtract(a, b Counter) *Counter {
+func Subtract(a, b *Counter) *Counter {
 	return operate(a, b, func (a, b float64) float64 { return a - b }, mergeKeys)
 }
 
 // Multiply a by b, returning a new counter
-func Multiply(a, b Counter) *Counter {
+func Multiply(a, b *Counter) *Counter {
 	return operate(a, b, func (a, b float64) float64 { return a * b }, mergeKeys)
 }
 
 // Divide a by b, returning a new counter
-func Divide(a, b Counter) *Counter {
+func Divide(a, b *Counter) *Counter {
 	return operate(a, b, func (a, b float64) float64 { return a / b }, mergeKeys)
 }
 
 // Apply an operation on two counters, updating the first counter with keys
 // defined by the keys function
-func (a *Counter) operate(b Counter, op func (a, b float64) float64, keys func(a, b []string) <-chan string) {
+func (a *Counter) operate(b *Counter, op func (a, b float64) float64, keys func(a, b []string) <-chan string) {
 	a.base = op(a.base, b.base)
 
 	for k := range keys(a.Keys(), b.Keys()) {
@@ -112,22 +112,22 @@ func (a *Counter) operate(b Counter, op func (a, b float64) float64, keys func(a
 }
 
 // Add o to c
-func (c *Counter) Add(o Counter) {
+func (c *Counter) Add(o *Counter) {
 	c.operate(o, func (a, b float64) float64 { return a + b }, mergeKeys)
 }
 
 // Subtract o from c
-func (c *Counter) Subtract(o Counter) {
+func (c *Counter) Subtract(o *Counter) {
 	c.operate(o, func (a, b float64) float64 { return a - b }, mergeKeys)
 }
 
 // Multiply c by o
-func (c *Counter) Multiply(o Counter) {
+func (c *Counter) Multiply(o *Counter) {
 	c.operate(o, func (a, b float64) float64 { return a * b }, mergeKeys)
 }
 
 // Divide c by o
-func (c *Counter) Divide(o Counter) {
+func (c *Counter) Divide(o *Counter) {
 	c.operate(o, func (a, b float64) float64 { return a / b }, mergeKeys)
 }
 
@@ -153,7 +153,7 @@ func (c *Counter) Exp() {
 
 // Reduce over the values in the counter (not including the default
 // value)
-func (c Counter) reduce(base float64, op func (a, b float64) float64) float64 {
+func (c *Counter) reduce(base float64, op func (a, b float64) float64) float64 {
 	val := base
 
 	for _, v := range c.values {

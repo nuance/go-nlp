@@ -1,7 +1,7 @@
 include $(GOROOT)/src/Make.inc
 
-TARG=gnlp/counter
+TARG=gnlp/frozencounter
 GOFILES=\
-	counter.go
+	frozencounter.go
 
 include $(GOROOT)/src/Make.pkg

@@ -12,7 +12,7 @@ type KeySet struct {
 }
 
 type Counter struct {
-	keys   *KeySet
+	Keys   *KeySet
 	values vector
 }
 
@@ -46,7 +46,7 @@ func internKeySet(ks *KeySet) *KeySet {
 		}
 	} else {
 		// This bucket is empty, initialize it to a list
-		keySetCache[ks.Hash] = make([]*KeySet, 1)
+		keySetCache[ks.Hash] = make([]*KeySet, 0, 1)
 	}
 
 	// Put this keyset in the bucket as the canonical instance
@@ -106,7 +106,7 @@ func mergeKeys(counters []*counter.Counter) []string {
 		}
 	}
 
-	r := make([]string, len(keys))
+	r := make([]string, 0, len(keys))
 	for k, _ := range keys {
 		r = append(r, k)
 	}
@@ -116,11 +116,10 @@ func mergeKeys(counters []*counter.Counter) []string {
 
 // Freeze multiple counters using the same index / keyset
 func FreezeMany(counters []*counter.Counter) []*Counter {
-	results := make([]*Counter, len(counters))
+	results := make([]*Counter, 0, len(counters))
 	if len(counters) == 0 {
 		return results
 	}
-
 	ks := NewKeySet(mergeKeys(counters), counters[0].Base)
 	for _, c := range counters {
 		results = append(results, FreezeWithKeySet(c, ks))
@@ -129,11 +128,32 @@ func FreezeMany(counters []*counter.Counter) []*Counter {
 	return results
 }
 
+func FreezeMap(counters map[string]*counter.Counter) map[string]*Counter {
+	order := make([]string, 0, len(counters))
+	for k, _ := range counters {
+		order = append(order, k)
+	}
+
+	dists := make([]*counter.Counter, 0, len(counters))
+	for _, dist := range counters {
+		dists = append(dists, dist)
+	}
+
+	frozenList := FreezeMany(dists)
+
+	frozen := make(map[string]*Counter)
+	for idx, feature := range order {
+		frozen[feature] = frozenList[idx]
+	}
+
+	return frozen
+}
+
 // Convert a frozen counter back into a counter.Counter.
 func (c *Counter) Thaw(base float64) *counter.Counter {
 	t := counter.New(base)
 
-	for s, idx := range c.keys.Positions {
+	for s, idx := range c.Keys.Positions {
 		t.Set(s, c.values[idx])
 	}
 
@@ -141,7 +161,13 @@ func (c *Counter) Thaw(base float64) *counter.Counter {
 }
 
 func (c *Counter) Copy() *Counter {
-	return &Counter{c.keys, c.values.copy()}
+	return &Counter{c.Keys, c.values.copy()}
+}
+
+func (c *Counter) ArgMax() (string, float64) {
+	idx := c.values.argmax()
+
+    return c.Keys.Keys[idx], c.values[idx]
 }
 
 // Add a to b, returning a new counter
@@ -174,7 +200,7 @@ func Divide(a, b *Counter) *Counter {
 
 // Apply an operation on two counters, updating the first counter
 func (a *Counter) operate(b *Counter, op func(a, b float64) float64) {
-	if a.keys != b.keys {
+	if a.Keys != b.Keys {
 		panic("Incoompatible frozen counters")
 	}
 
@@ -185,7 +211,7 @@ func (a *Counter) operate(b *Counter, op func(a, b float64) float64) {
 
 // Add o to c
 func (c *Counter) Add(o *Counter) {
-	if c.keys != o.keys {
+	if c.Keys != o.Keys {
 		panic("Incoompatible frozen counters")
 	}
 
@@ -194,7 +220,7 @@ func (c *Counter) Add(o *Counter) {
 
 // Subtract o from c
 func (c *Counter) Subtract(o *Counter) {
-	if c.keys != o.keys {
+	if c.Keys != o.Keys {
 		panic("Incoompatible frozen counters")
 	}
 

@@ -31,9 +31,15 @@ func (c *Counter) Set(k string, v float64) {
 	c.values[k] = v
 }
 
+// Increment a value
+func (c *Counter) Incr(k string) {
+	v := c.Get(k)
+	c.Set(k, v+1)
+}
+
 // Return a list of keys for this counter
 func (c *Counter) Keys() []string {
-	result := make([]string, len(c.values))
+	result := make([]string, 0, len(c.values))
 
 	for k, v := range c.values {
 		// Don't track default values

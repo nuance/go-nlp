@@ -8,16 +8,56 @@ type KeySet struct {
 	Keys []string
 	Positions map[string] int
 	Hash uint64
+	Base float64
 }
 
 type Counter struct {
 	keys *KeySet
-	values []float64
+	values vector
+}
+
+var keySetCache map[uint64] []*KeySet
+func init() {
+	// Build the interning cache
+	keySetCache = make(map[uint64] []*KeySet)
+}
+
+func internKeySet(ks *KeySet) (*KeySet) {
+	possibles, ok := keySetCache[ks.Hash]
+
+	// We found something with this hash
+	if ok {
+		// Look for it
+		for _, possible := range possibles {
+			// If the keys match up, this is it - return possible as
+			// the canonical instance
+			if len(possible.Keys) != len(ks.Keys) {
+				continue
+			}
+
+			for idx, v := range possible.Keys {
+				if ks.Keys[idx] != v {
+					continue
+				}
+			}
+
+			return possible
+		}
+	} else {
+		// This bucket is empty, initialize it to a list
+		keySetCache[ks.Hash] = make([]*KeySet, 1)
+	}
+
+	// Put this keyset in the bucket as the canonical instance
+	keySetCache[ks.Hash] = append(keySetCache[ks.Hash], ks)
+
+	return ks
+
 }
 
 // Build a key set of the keys + a crc64 of the keys (which we can
 // efficiently compare). Also returns an index of string to position
-func NewKeySet(keys []string) *KeySet {
+func NewKeySet(keys []string, base float64) *KeySet {
 	c := crc.New(crc.MakeTable(crc.ISO))
 	index := make(map[string] int)
 
@@ -26,17 +66,21 @@ func NewKeySet(keys []string) *KeySet {
 		c.Write([]byte(s))
 	}
 
-	return &KeySet{Hash: c.Sum64(), Keys: keys, Positions: index}
+	return internKeySet(&KeySet{Hash: c.Sum64(), Keys: keys, Positions: index, Base: base})
 }
 
 func New(ks *KeySet) *Counter {
-	return &Counter{ks, make([]float64, len(ks.Keys))}
+	v := make(vector, len(ks.Keys))
+	v.reset(ks.Base)
+
+	return &Counter{ks, v}
 }
 
 // Freeze a counter, using a previously-generated keyset and
 // index.
 func FreezeWithKeySet(c *counter.Counter, ks *KeySet) *Counter {
 	values := make([]float64, len(ks.Keys))
+
 	for s, idx := range ks.Positions {
 		values[idx] = c.Get(s)
 	}
@@ -47,9 +91,26 @@ func FreezeWithKeySet(c *counter.Counter, ks *KeySet) *Counter {
 // Convert a counter.Counter into a frozen counter, returning the new
 // frozen counter and the index required to convert it back.
 func Freeze(c *counter.Counter) *Counter {
-	ks := NewKeySet(c.Keys())
+	ks := NewKeySet(c.Keys(), c.Base)
 
 	return FreezeWithKeySet(c, ks)
+}
+
+func mergeKeys(counters []*counter.Counter) []string {
+	keys := make(map[string] bool)
+
+	for _, c := range counters {
+		for _, k := range c.Keys() {
+			keys[k] = true
+		}
+	}
+
+	r := make([]string, len(keys))
+	for k, _ := range keys {
+		r = append(r, k)
+	}
+
+	return r
 }
 
 // Freeze multiple counters using the same index / keyset
@@ -59,7 +120,7 @@ func FreezeMany(counters []*counter.Counter) []*Counter {
 		return results
 	}
 
-	ks := NewKeySet(counters[0].Keys())
+	ks := NewKeySet(mergeKeys(counters), counters[0].Base)
 	for _, c := range counters {
 		results = append(results, FreezeWithKeySet(c, ks))
 	}
@@ -78,41 +139,41 @@ func (c *Counter) Thaw(base float64) *counter.Counter {
 	return t
 }
 
-// Apply an operation on two counters, returning new counter with keys
-// defined by the keys function
-func operate(a, b *Counter, op func (a, b float64) float64) *Counter {
-	result := New(a.keys)
-
-	for idx, val := range a.values {
-		result.values[idx] = op(val, b.values[idx])
-	}
-
-	return result
+func (c *Counter) Copy() *Counter {
+	return &Counter{c.keys, c.values.copy()}
 }
 
 // Add a to b, returning a new counter
 func Add(a, b *Counter) *Counter {
-	return operate(a, b, func (a, b float64) float64 { return a + b })
+	result := a.Copy()
+	result.Add(b)
+	return result
 }
 
 // Subtract b from a, returning a new counter
 func Subtract(a, b *Counter) *Counter {
-	return operate(a, b, func (a, b float64) float64 { return a - b })
+	result := a.Copy()
+	result.Subtract(b)
+	return result
 }
 
 // Multiply a by b, returning a new counter
 func Multiply(a, b *Counter) *Counter {
-	return operate(a, b, func (a, b float64) float64 { return a * b })
+	result := a.Copy()
+	result.Multiply(b)
+	return result
 }
 
 // Divide a by b, returning a new counter
 func Divide(a, b *Counter) *Counter {
-	return operate(a, b, func (a, b float64) float64 { return a / b })
+	result := a.Copy()
+	result.Divide(b)
+	return result
 }
 
 // Apply an operation on two counters, updating the first counter
 func (a *Counter) operate(b *Counter, op func (a, b float64) float64) {
-	if a.keys.Hash != b.keys.Hash {
+	if a.keys != b.keys {
 		panic("Incoompatible frozen counters")
 	}
 
@@ -123,20 +184,28 @@ func (a *Counter) operate(b *Counter, op func (a, b float64) float64) {
 
 // Add o to c
 func (c *Counter) Add(o *Counter) {
-	c.operate(o, func (a, b float64) float64 { return a + b })
+	if c.keys != o.keys {
+		panic("Incoompatible frozen counters")
+	}
+
+	c.values.add(o.values)
 }
 
 // Subtract o from c
 func (c *Counter) Subtract(o *Counter) {
-	c.operate(o, func (a, b float64) float64 { return a - b })
+	if c.keys != o.keys {
+		panic("Incoompatible frozen counters")
+	}
+
+	c.values.subtract(o.values)
 }
 
-// Multiply c by o
+// Element-wise multiply c by o. Note that this is not blas-accelerated.
 func (c *Counter) Multiply(o *Counter) {
 	c.operate(o, func (a, b float64) float64 { return a * b })
 }
 
-// Divide c by o
+// Element-wise divide c by o. Note that this is not blas-accelerated.
 func (c *Counter) Divide(o *Counter) {
 	c.operate(o, func (a, b float64) float64 { return a / b })
 }
@@ -158,29 +227,17 @@ func (c *Counter) Exp() {
 	c.apply(math.Exp)
 }
 
-// Reduce over the values in the counter (not including the default
-// value)
-func (c *Counter) reduce(base float64, op func (a, b float64) float64) float64 {
-	val := base
-
-	for _, v := range c.values {
-		val = op(val, v)
-	}
-
-	return val
-}
-
 // Normalize a counter s.t. the sum over values is now 1.0
 func (c *Counter) Normalize() {
-	sum := c.reduce(0.0, func (a, b float64) float64 { return a + b })
-	c.apply(func (a float64) float64 { return a / sum })
+	sum := c.values.sum()
+	c.values.scale(1.0 / sum)
 }
 
 // Special case of normalize - normalize a distribution and turn it
 // into a log-distribution (performing the normalization after the
 // xform to maintain precision)
 func (c *Counter) LogNormalize() {
-	sum := c.reduce(0.0, func (a, b float64) float64 { return a + b })
+	sum := c.values.sum()
 	logSum := math.Log(sum)
 
 	c.apply(func (a float64) float64 { return math.Log(a) - logSum })

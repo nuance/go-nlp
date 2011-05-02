@@ -5,7 +5,7 @@ import "math"
 type Counter struct {
 	values map[string] float64
 	// default value for missing items
-	base float64
+	Base float64
 }
 
 func New(base float64) *Counter {
@@ -19,7 +19,7 @@ func (c *Counter) Get(k string) float64 {
 	if ok {
 		return v
 	}
-	return c.base
+	return c.Base
 }
 
 // Set a value for a key
@@ -37,7 +37,7 @@ func (c *Counter) Keys() []string {
 
 	for k, v := range c.values {
 		// Don't track default values
-		if v == c.base {
+		if v == c.Base {
 			continue
 		}
 
@@ -72,7 +72,7 @@ func mergeKeys(a, b []string) <-chan string {
 // Apply an operation on two counters, returning new counter with keys
 // defined by the keys function
 func operate(a, b *Counter, op func (a, b float64) float64, keys func(a, b []string) <-chan string) *Counter {
-	result := New(op(a.base, b.base))
+	result := New(op(a.Base, b.Base))
 
 	for k := range keys(a.Keys(), b.Keys()) {
 		result.Set(k, op(a.Get(k), b.Get(k)))
@@ -104,7 +104,7 @@ func Divide(a, b *Counter) *Counter {
 // Apply an operation on two counters, updating the first counter with keys
 // defined by the keys function
 func (a *Counter) operate(b *Counter, op func (a, b float64) float64, keys func(a, b []string) <-chan string) {
-	a.base = op(a.base, b.base)
+	a.Base = op(a.Base, b.Base)
 
 	for k := range keys(a.Keys(), b.Keys()) {
 		a.Set(k, op(a.Get(k), b.Get(k)))
@@ -134,7 +134,7 @@ func (c *Counter) Divide(o *Counter) {
 // Apply a function to every value in the counter (including the
 // default)
 func (c *Counter) apply(op func (a float64) float64) {
-	c.base = op(c.base)
+	c.Base = op(c.Base)
 
 	for k, v := range c.values {
 		c.Set(k, op(v))

@@ -1,28 +1,29 @@
 package frozencounter
 
 import counter "gnlp/counter"
-import crc "hash/crc64"
+import crc     "hash/crc64"
 import "math"
 
 type KeySet struct {
-	Keys []string
-	Positions map[string] int
-	Hash uint64
-	Base float64
+	Keys      []string
+	Positions map[string]int
+	Hash      uint64
+	Base      float64
 }
 
 type Counter struct {
-	keys *KeySet
+	keys   *KeySet
 	values vector
 }
 
-var keySetCache map[uint64] []*KeySet
+var keySetCache map[uint64][]*KeySet
+
 func init() {
 	// Build the interning cache
-	keySetCache = make(map[uint64] []*KeySet)
+	keySetCache = make(map[uint64][]*KeySet)
 }
 
-func internKeySet(ks *KeySet) (*KeySet) {
+func internKeySet(ks *KeySet) *KeySet {
 	possibles, ok := keySetCache[ks.Hash]
 
 	// We found something with this hash
@@ -59,7 +60,7 @@ func internKeySet(ks *KeySet) (*KeySet) {
 // efficiently compare). Also returns an index of string to position
 func NewKeySet(keys []string, base float64) *KeySet {
 	c := crc.New(crc.MakeTable(crc.ISO))
-	index := make(map[string] int)
+	index := make(map[string]int)
 
 	for idx, s := range keys {
 		index[s] = idx
@@ -97,7 +98,7 @@ func Freeze(c *counter.Counter) *Counter {
 }
 
 func mergeKeys(counters []*counter.Counter) []string {
-	keys := make(map[string] bool)
+	keys := make(map[string]bool)
 
 	for _, c := range counters {
 		for _, k := range c.Keys() {
@@ -172,7 +173,7 @@ func Divide(a, b *Counter) *Counter {
 }
 
 // Apply an operation on two counters, updating the first counter
-func (a *Counter) operate(b *Counter, op func (a, b float64) float64) {
+func (a *Counter) operate(b *Counter, op func(a, b float64) float64) {
 	if a.keys != b.keys {
 		panic("Incoompatible frozen counters")
 	}
@@ -202,16 +203,16 @@ func (c *Counter) Subtract(o *Counter) {
 
 // Element-wise multiply c by o. Note that this is not blas-accelerated.
 func (c *Counter) Multiply(o *Counter) {
-	c.operate(o, func (a, b float64) float64 { return a * b })
+	c.operate(o, func(a, b float64) float64 { return a * b })
 }
 
 // Element-wise divide c by o. Note that this is not blas-accelerated.
 func (c *Counter) Divide(o *Counter) {
-	c.operate(o, func (a, b float64) float64 { return a / b })
+	c.operate(o, func(a, b float64) float64 { return a / b })
 }
 
 // Apply a function to every value in the counter
-func (c *Counter) apply(op func (a float64) float64) {
+func (c *Counter) apply(op func(a float64) float64) {
 	for idx, v := range c.values {
 		c.values[idx] = op(v)
 	}
@@ -240,6 +241,5 @@ func (c *Counter) LogNormalize() {
 	sum := c.values.sum()
 	logSum := math.Log(sum)
 
-	c.apply(func (a float64) float64 { return math.Log(a) - logSum })
+	c.apply(func(a float64) float64 { return math.Log(a) - logSum })
 }
-

@@ -2,6 +2,7 @@ package frozencounter
 
 import counter "gnlp/counter"
 import crc     "hash/crc64"
+import "fmt"
 import "math"
 
 type KeySet struct {
@@ -162,6 +163,18 @@ func (c *Counter) Thaw(base float64) *counter.Counter {
 
 func (c *Counter) Copy() *Counter {
 	return &Counter{c.Keys, c.values.copy()}
+}
+
+func (c *Counter) String() string {
+	s := "FrozenCounter: {"
+
+	for idx, key := range c.Keys.Keys {
+		s += fmt.Sprintf("'%s': %f, ", key, c.values[idx])
+	}
+
+	s += "}"
+
+	return s
 }
 
 func (c *Counter) ArgMax() (string, float64) {

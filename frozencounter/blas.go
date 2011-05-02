@@ -35,18 +35,18 @@ func (v vector) dot(o vector) float64 {
 
 // v += o
 func (v vector) add(o vector) {
-	c1 := (*C.double)(unsafe.Pointer(&v[0]))
-	c2 := (*C.double)(unsafe.Pointer(&o[0]))
+	input := (*C.double)(unsafe.Pointer(&o[0]))
+	output := (*C.double)(unsafe.Pointer(&v[0]))
 
-	C.cblas_daxpy(C.int(len(v)), 1.0, c1, 1, c2, 1)
+	C.cblas_daxpy(C.int(len(v)), 1.0, input, 1, output, 1)
 }
 
 // v -= o
 func (v vector) subtract(o vector) {
-	c1 := (*C.double)(unsafe.Pointer(&v[0]))
-	c2 := (*C.double)(unsafe.Pointer(&o[0]))
+	input:= (*C.double)(unsafe.Pointer(&o[0]))
+	output := (*C.double)(unsafe.Pointer(&v[0]))
 
-	C.catlas_daxpby(C.int(len(v)), 1.0, c1, 1, -1.0, c2, 1)
+	C.catlas_daxpby(C.int(len(v)), 1.0, input, 1, -1.0, output, 1)
 }
 
 // Scale the values in v by a (v *= a)

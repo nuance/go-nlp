@@ -3,3 +3,6 @@ _obj
 *.6
 _cgo*
 *.o
+6.out
+_testmain.go
+_test

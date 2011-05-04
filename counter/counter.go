@@ -58,6 +58,8 @@ func mergeKeys(a, b []string) <-chan string {
 	out := make(chan string)
 
 	go func(out chan<- string) {
+		defer close(out)
+
 		seen := make(map[string]bool)
 
 		for _, k := range a {

@@ -15,8 +15,9 @@ element-wise mathematical operations with other counter.Counter
 objects.
 
 ```go
-// Create a counter with 0 probability for unknown events
-balls := counter.New(0.0)
+// Create a counter with 0 probability for unknown events (and with ""
+// corresponding to the unknown event)
+balls := counter.New(0.0, "")
 	
 // Add some observations
 balls.Incr("blue")
@@ -32,7 +33,7 @@ balls.Get("blue")
 // purple => 0.0
 balls.Get("purple")
 
-preference = counter.New(0.0)
+preference = counter.New(0.0, "")
 preference.Set("red", 2.0)
 preference.Set("blue", 1.0)
 preference.Normalize()

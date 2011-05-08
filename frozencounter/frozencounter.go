@@ -11,7 +11,6 @@ type KeySet struct {
 	Positions map[gnlp.Feature]int
 	Hash      uint64
 	Base      float64
-	Missing   gnlp.Feature
 }
 
 type Counter struct {
@@ -35,7 +34,7 @@ func internKeySet(ks *KeySet) *KeySet {
 		for _, possible := range possibles {
 			// If the keys match up, this is it - return possible as
 			// the canonical instance
-			if possible.Base != ks.Base || possible.Missing != ks.Missing {
+			if possible.Base != ks.Base {
 				continue
 			}
 
@@ -65,18 +64,16 @@ func internKeySet(ks *KeySet) *KeySet {
 
 // Build a key set of the keys + a crc64 of the keys (which we can
 // efficiently compare). Also returns an index of gnlp.Feature to position
-func NewKeySet(keys []gnlp.Feature, base float64, missing gnlp.Feature) *KeySet {
+func NewKeySet(keys []gnlp.Feature, base float64) *KeySet {
 	c := crc.New(crc.MakeTable(crc.ISO))
 	index := make(map[gnlp.Feature]int)
-
-	c.Write([]byte(missing.String()))
 
 	for idx, s := range keys {
 		index[s] = idx
 		c.Write([]byte(s.String()))
 	}
 
-	return internKeySet(&KeySet{Hash: c.Sum64(), Keys: keys, Positions: index, Base: base, Missing: missing})
+	return internKeySet(&KeySet{Hash: c.Sum64(), Keys: keys, Positions: index, Base: base})
 }
 
 func New(ks *KeySet) *Counter {
@@ -101,7 +98,7 @@ func FreezeWithKeySet(c *counter.Counter, ks *KeySet) *Counter {
 // Convert a counter.Counter into a frozen counter, returning the new
 // frozen counter and the index required to convert it back.
 func Freeze(c *counter.Counter) *Counter {
-	ks := NewKeySet(c.Keys(), c.Base, c.Missing)
+	ks := NewKeySet(c.Keys(), c.Base)
 
 	return FreezeWithKeySet(c, ks)
 }
@@ -129,7 +126,7 @@ func FreezeMany(counters []*counter.Counter) []*Counter {
 	if len(counters) == 0 {
 		return results
 	}
-	ks := NewKeySet(mergeKeys(counters), counters[0].Base, counters[0].Missing)
+	ks := NewKeySet(mergeKeys(counters), counters[0].Base)
 	for _, c := range counters {
 		results = append(results, FreezeWithKeySet(c, ks))
 	}
@@ -160,7 +157,7 @@ func FreezeMap(counters map[gnlp.Feature]*counter.Counter) map[gnlp.Feature]*Cou
 
 // Convert a frozen counter back into a counter.Counter.
 func (c *Counter) Thaw() *counter.Counter {
-	t := counter.New(c.Keys.Base, c.Keys.Missing)
+	t := counter.New(c.Keys.Base)
 
 	for s, idx := range c.Keys.Positions {
 		t.Set(s, c.values[idx])

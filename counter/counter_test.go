@@ -29,7 +29,7 @@ func (w Word) String() string {
 
 func TestBasics(t *testing.T) {
 	// Create a counter with 0 probability for unknown events
-	balls := New(0.0, Word(""))
+	balls := New(0.0)
 
 	// Add some observations
 	balls.Incr(Word("blue"))
@@ -50,7 +50,7 @@ func TestBasics(t *testing.T) {
 		t.Error("Purple doesn't have 0 probability")
 	}
 
-	preference := New(0.0, Word(""))
+	preference := New(0.0)
 	preference.Set(Word("red"), 2.0)
 	preference.Set(Word("blue"), 1.0)
 	preference.Normalize()

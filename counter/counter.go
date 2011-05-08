@@ -7,12 +7,10 @@ type Counter struct {
 	values map[gnlp.Feature]float64
 	// default value for missing items
 	Base float64
-	// feature representing the missing items
-	Missing gnlp.Feature
 }
 
-func New(base float64, missing gnlp.Feature) *Counter {
-	return &Counter{make(map[gnlp.Feature]float64), base, missing}
+func New(base float64) *Counter {
+	return &Counter{make(map[gnlp.Feature]float64), base}
 }
 
 // Return a value for a key (falling back to the default)
@@ -79,7 +77,7 @@ func mergeKeys(a, b []gnlp.Feature) <-chan gnlp.Feature {
 // Apply an operation on two counters, returning new counter with keys
 // defined by the keys function
 func operate(a, b *Counter, op func(a, b float64) float64, keys func(a, b []gnlp.Feature) <-chan gnlp.Feature) *Counter {
-	result := New(op(a.Base, b.Base), a.Missing)
+	result := New(op(a.Base, b.Base))
 
 	for k := range keys(a.Keys(), b.Keys()) {
 		result.Set(k, op(a.Get(k), b.Get(k)))
@@ -140,22 +138,22 @@ func (c *Counter) Divide(o *Counter) {
 
 // Apply a function to every value in the counter (including the
 // default)
-func (c *Counter) Apply(op func(k gnlp.Feature, a float64) float64) {
-	c.Base = op(c.Missing, c.Base)
+func (c *Counter) Apply(op func(k *gnlp.Feature, a float64) float64) {
+	c.Base = op(nil, c.Base)
 
 	for k, v := range c.values {
-		c.Set(k, op(k, v))
+		c.Set(k, op(&k, v))
 	}
 }
 
 // Log every value in the counter (including the default)
 func (c *Counter) Log() {
-	c.Apply(func(s gnlp.Feature, f float64) float64 { return math.Log(f) })
+	c.Apply(func(s *gnlp.Feature, f float64) float64 { return math.Log(f) })
 }
 
 // Exponentiate every value in the counter (including the default)
 func (c *Counter) Exp() {
-	c.Apply(func(s gnlp.Feature, f float64) float64 { return math.Exp(f) })
+	c.Apply(func(s *gnlp.Feature, f float64) float64 { return math.Exp(f) })
 }
 
 // Reduce over the values in the counter (not including the default
@@ -173,7 +171,7 @@ func (c *Counter) reduce(base float64, op func(a, b float64) float64) float64 {
 // Normalize a counter s.t. the sum over values is now 1.0
 func (c *Counter) Normalize() {
 	sum := c.reduce(0.0, func(a, b float64) float64 { return a + b })
-	c.Apply(func(s gnlp.Feature, a float64) float64 { return a / sum })
+	c.Apply(func(s *gnlp.Feature, a float64) float64 { return a / sum })
 }
 
 // Special case of normalize - normalize a distribution and turn it
@@ -183,5 +181,5 @@ func (c *Counter) LogNormalize() {
 	sum := c.reduce(0.0, func(a, b float64) float64 { return a + b })
 	logSum := math.Log(sum)
 
-	c.Apply(func(s gnlp.Feature, a float64) float64 { return math.Log(a) - logSum })
+	c.Apply(func(s *gnlp.Feature, a float64) float64 { return math.Log(a) - logSum })
 }

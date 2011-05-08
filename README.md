@@ -45,6 +45,21 @@ expected_with_preference.Normalize()
 expected_with_preference.Get("blue")
 // red => 0.5
 expected_with_preference.Get("red")
+
+// You can also use log probabilities
+balls.LogNormalize()
+preferences.LogNormalize()
+
+// And do in-place operations
+balls.Add(preferences)
+
+// Log-normalize expects counters with positive counts, so
+// exponentiate-then-normalize
+balls.Exp()
+balls.LogNormalize()
+
+// blue => -1 (== lg(0.5))
+balls.Get("blue")
 ```
 
 * frozencounter.Counter

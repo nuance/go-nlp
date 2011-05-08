@@ -10,3 +10,16 @@ type Feature interface {
 	Split() (Feature, Feature)
 	String() string
 }
+
+type Counter interface {
+	Get(Feature) float64
+	Set(Feature, float64)
+	Incr(Feature)
+
+	Log()
+	Exp()
+	Normalize()
+	LogNormalize()
+
+	Apply(op func(*Feature, float64) float64)
+}

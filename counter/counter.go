@@ -183,3 +183,6 @@ func (c *Counter) LogNormalize() {
 
 	c.Apply(func(s *gnlp.Feature, a float64) float64 { return math.Log(a) - logSum })
 }
+
+var _ gnlp.Counter = New(0.0)
+

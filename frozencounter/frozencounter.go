@@ -155,6 +155,36 @@ func FreezeMap(counters map[gnlp.Feature]*counter.Counter) map[gnlp.Feature]*Cou
 	return frozen
 }
 
+func (c *Counter) Get(f gnlp.Feature) float64 {
+	idx, ok := c.Keys.Positions[f]
+
+	if !ok {
+		return c.Keys.Base
+	}
+
+	return c.values[idx]
+}
+
+func (c *Counter) Set(f gnlp.Feature, val float64) {
+	idx, ok := c.Keys.Positions[f]
+
+	if !ok {
+		panic("Feature not found in frozen counter")
+	}
+
+	c.values[idx] = val
+}
+
+func (c *Counter) Incr(f gnlp.Feature) {
+	idx, ok := c.Keys.Positions[f]
+
+	if !ok {
+		panic("Feature not found in frozen counter")
+	}
+
+	c.values[idx] += 1
+}
+
 // Convert a frozen counter back into a counter.Counter.
 func (c *Counter) Thaw() *counter.Counter {
 	t := counter.New(c.Keys.Base)
@@ -256,20 +286,20 @@ func (c *Counter) Divide(o *Counter) {
 }
 
 // Apply a function to every value in the counter
-func (c *Counter) apply(op func(a float64) float64) {
+func (c *Counter) Apply(op func(f *gnlp.Feature, a float64) float64) {
 	for idx, v := range c.values {
-		c.values[idx] = op(v)
+		c.values[idx] = op(&c.Keys.Keys[idx], v)
 	}
 }
 
 // Log every value in the counter (including the default)
 func (c *Counter) Log() {
-	c.apply(math.Log)
+	c.Apply(func (f *gnlp.Feature, a float64) float64 { return math.Log(a) })
 }
 
 // Exponentiate every value in the counter (including the default)
 func (c *Counter) Exp() {
-	c.apply(math.Exp)
+	c.Apply(func (f *gnlp.Feature, a float64) float64 { return math.Exp(a) })
 }
 
 // Normalize a counter s.t. the sum over values is now 1.0
@@ -285,5 +315,7 @@ func (c *Counter) LogNormalize() {
 	sum := c.values.sum()
 	logSum := math.Log(sum)
 
-	c.apply(func(a float64) float64 { return math.Log(a) - logSum })
+	c.Apply(func (f *gnlp.Feature, a float64) float64 { return math.Log(a) - logSum })
 }
+
+var _ gnlp.Counter = new(Counter)

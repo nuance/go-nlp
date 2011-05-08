@@ -70,3 +70,10 @@ order fixed according to the set of keys). Supports element-wise math
 operations with other frozencounter.Counters that share the same set
 of keys. Some mathematical operations are accelerated by the BLAS
 library.
+
+```go
+fBalls := frozencounter.Freeze(balls)
+fPrefs := frozencounter.Freeze(preference)
+
+fExpectedWithPreference := frozencounter.Multiply(fBalls, fPrefs)
+```

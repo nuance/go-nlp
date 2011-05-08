@@ -1,19 +1,16 @@
 package smooth
 
 import "gnlp"
-import counter "gnlp/counter"
 
-func LaPlace(c *counter.Counter, alpha float64) {
+func LaPlace(c gnlp.Counter, alpha float64) {
 	c.Apply(func(s *gnlp.Feature, w float64) float64 {
 		return w + alpha
 	})
 
-	c.Base += alpha
-
 	c.Normalize()
 }
 
-func GoodTuring(c *counter.Counter, estimator func(key *gnlp.Feature, count float64) float64) {
+func GoodTuring(c gnlp.Counter, estimator func(key *gnlp.Feature, count float64) float64) {
 	c.Apply(func(key *gnlp.Feature, w float64) float64 {
 		return (w + 1) * estimator(key, w+1) / estimator(key, w)
 	})
@@ -22,7 +19,7 @@ func GoodTuring(c *counter.Counter, estimator func(key *gnlp.Feature, count floa
 }
 
 // Good turing with a linear-combination fallback estimate
-func JelinekMercer(counts, fallbackCounts *counter.Counter, fallbackWeight func(key *gnlp.Feature) float64) {
+func JelinekMercer(counts, fallbackCounts gnlp.Counter, fallbackWeight func(key *gnlp.Feature) float64) {
 	counts.Apply(func(key *gnlp.Feature, w float64) float64 {
 		_, smaller := (*key).Split()
 		weight := fallbackWeight(key)
@@ -33,6 +30,6 @@ func JelinekMercer(counts, fallbackCounts *counter.Counter, fallbackWeight func(
 	counts.Normalize()
 }
 
-func Katz(counts, fallbackCounts *counter.Counter, cutoff float64) {
-
+func Katz(counts, fallbackCounts gnlp.Counter, reliableCutoff float64) {
+	
 }

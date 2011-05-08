@@ -12,5 +12,5 @@ func main() {
 	nb := Train(training)
 	class, prob := nb.Classify([]string{"matt"})
 
-	fmt.Printf("Guessed class %s w/ prob %.2f%%\n", class, prob * 100)
+	fmt.Printf("Guessed class %s w/ prob %.2f%%\n", class, prob*100)
 }

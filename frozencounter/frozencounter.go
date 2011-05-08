@@ -2,7 +2,7 @@ package frozencounter
 
 import "gnlp"
 import counter "gnlp/counter"
-import crc     "hash/crc64"
+import crc "hash/crc64"
 import "fmt"
 import "math"
 
@@ -11,7 +11,7 @@ type KeySet struct {
 	Positions map[gnlp.Feature]int
 	Hash      uint64
 	Base      float64
-	Missing gnlp.Feature
+	Missing   gnlp.Feature
 }
 
 type Counter struct {
@@ -188,7 +188,7 @@ func (c *Counter) String() string {
 func (c *Counter) ArgMax() (gnlp.Feature, float64) {
 	idx := c.values.argmax()
 
-    return c.Keys.Keys[idx], c.values[idx]
+	return c.Keys.Keys[idx], c.values[idx]
 }
 
 // Add a to b, returning a new counter

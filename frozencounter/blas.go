@@ -43,7 +43,7 @@ func (v vector) add(o vector) {
 
 // v -= o
 func (v vector) subtract(o vector) {
-	input:= (*C.double)(unsafe.Pointer(&o[0]))
+	input := (*C.double)(unsafe.Pointer(&o[0]))
 	output := (*C.double)(unsafe.Pointer(&v[0]))
 
 	C.catlas_daxpby(C.int(len(v)), 1.0, input, 1, -1.0, output, 1)

@@ -40,7 +40,7 @@ func TestBasics(t *testing.T) {
 	balls.Normalize()
 
 	// blue => 0.66666666
-	if balls.Get(Word("blue")) != 2.0 / 3.0 {
+	if balls.Get(Word("blue")) != 2.0/3.0 {
 		t.Error("Blue doesn't have 2/3rds probability")
 		t.FailNow()
 	}

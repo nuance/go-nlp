@@ -150,12 +150,12 @@ func (c *Counter) Apply(op func(k gnlp.Feature, a float64) float64) {
 
 // Log every value in the counter (including the default)
 func (c *Counter) Log() {
-	c.Apply(func (s gnlp.Feature, f float64) float64 { return math.Log(f) })
+	c.Apply(func(s gnlp.Feature, f float64) float64 { return math.Log(f) })
 }
 
 // Exponentiate every value in the counter (including the default)
 func (c *Counter) Exp() {
-	c.Apply(func (s gnlp.Feature, f float64) float64 { return math.Exp(f) })
+	c.Apply(func(s gnlp.Feature, f float64) float64 { return math.Exp(f) })
 }
 
 // Reduce over the values in the counter (not including the default

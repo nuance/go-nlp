@@ -10,4 +10,3 @@ type Feature interface {
 	Split() (Feature, Feature)
 	String() string
 }
-

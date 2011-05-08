@@ -7,11 +7,11 @@ type Class string
 
 type NaiveBayes struct {
 	FeatureLogDistributions map[string]*frozencounter.Counter
-	ClassLogPrior *frozencounter.Counter
+	ClassLogPrior           *frozencounter.Counter
 }
 
 type Datum struct {
-	class Class
+	class    Class
 	features []string
 }
 
@@ -23,7 +23,7 @@ func Train(data []Datum) *NaiveBayes {
 		class.Incr(string(datum.class))
 		for _, f := range datum.features {
 			dist, ok := features[f]
-			
+
 			if !ok {
 				dist = counter.New(0.0)
 				features[f] = dist

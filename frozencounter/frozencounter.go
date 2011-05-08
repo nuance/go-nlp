@@ -1,15 +1,17 @@
 package frozencounter
 
+import "gnlp"
 import counter "gnlp/counter"
 import crc     "hash/crc64"
 import "fmt"
 import "math"
 
 type KeySet struct {
-	Keys      []string
-	Positions map[string]int
+	Keys      []gnlp.Feature
+	Positions map[gnlp.Feature]int
 	Hash      uint64
 	Base      float64
+	Missing gnlp.Feature
 }
 
 type Counter struct {
@@ -33,6 +35,10 @@ func internKeySet(ks *KeySet) *KeySet {
 		for _, possible := range possibles {
 			// If the keys match up, this is it - return possible as
 			// the canonical instance
+			if possible.Base != ks.Base || possible.Missing != ks.Missing {
+				continue
+			}
+
 			if len(possible.Keys) != len(ks.Keys) {
 				continue
 			}
@@ -58,17 +64,19 @@ func internKeySet(ks *KeySet) *KeySet {
 }
 
 // Build a key set of the keys + a crc64 of the keys (which we can
-// efficiently compare). Also returns an index of string to position
-func NewKeySet(keys []string, base float64) *KeySet {
+// efficiently compare). Also returns an index of gnlp.Feature to position
+func NewKeySet(keys []gnlp.Feature, base float64, missing gnlp.Feature) *KeySet {
 	c := crc.New(crc.MakeTable(crc.ISO))
-	index := make(map[string]int)
+	index := make(map[gnlp.Feature]int)
+
+	c.Write([]byte(missing.String()))
 
 	for idx, s := range keys {
 		index[s] = idx
-		c.Write([]byte(s))
+		c.Write([]byte(s.String()))
 	}
 
-	return internKeySet(&KeySet{Hash: c.Sum64(), Keys: keys, Positions: index, Base: base})
+	return internKeySet(&KeySet{Hash: c.Sum64(), Keys: keys, Positions: index, Base: base, Missing: missing})
 }
 
 func New(ks *KeySet) *Counter {
@@ -93,13 +101,13 @@ func FreezeWithKeySet(c *counter.Counter, ks *KeySet) *Counter {
 // Convert a counter.Counter into a frozen counter, returning the new
 // frozen counter and the index required to convert it back.
 func Freeze(c *counter.Counter) *Counter {
-	ks := NewKeySet(c.Keys(), c.Base)
+	ks := NewKeySet(c.Keys(), c.Base, c.Missing)
 
 	return FreezeWithKeySet(c, ks)
 }
 
-func mergeKeys(counters []*counter.Counter) []string {
-	keys := make(map[string]bool)
+func mergeKeys(counters []*counter.Counter) []gnlp.Feature {
+	keys := make(map[gnlp.Feature]bool)
 
 	for _, c := range counters {
 		for _, k := range c.Keys() {
@@ -107,7 +115,7 @@ func mergeKeys(counters []*counter.Counter) []string {
 		}
 	}
 
-	r := make([]string, 0, len(keys))
+	r := make([]gnlp.Feature, 0, len(keys))
 	for k, _ := range keys {
 		r = append(r, k)
 	}
@@ -121,7 +129,7 @@ func FreezeMany(counters []*counter.Counter) []*Counter {
 	if len(counters) == 0 {
 		return results
 	}
-	ks := NewKeySet(mergeKeys(counters), counters[0].Base)
+	ks := NewKeySet(mergeKeys(counters), counters[0].Base, counters[0].Missing)
 	for _, c := range counters {
 		results = append(results, FreezeWithKeySet(c, ks))
 	}
@@ -129,8 +137,8 @@ func FreezeMany(counters []*counter.Counter) []*Counter {
 	return results
 }
 
-func FreezeMap(counters map[string]*counter.Counter) map[string]*Counter {
-	order := make([]string, 0, len(counters))
+func FreezeMap(counters map[gnlp.Feature]*counter.Counter) map[gnlp.Feature]*Counter {
+	order := make([]gnlp.Feature, 0, len(counters))
 	for k, _ := range counters {
 		order = append(order, k)
 	}
@@ -142,7 +150,7 @@ func FreezeMap(counters map[string]*counter.Counter) map[string]*Counter {
 
 	frozenList := FreezeMany(dists)
 
-	frozen := make(map[string]*Counter)
+	frozen := make(map[gnlp.Feature]*Counter)
 	for idx, feature := range order {
 		frozen[feature] = frozenList[idx]
 	}
@@ -151,8 +159,8 @@ func FreezeMap(counters map[string]*counter.Counter) map[string]*Counter {
 }
 
 // Convert a frozen counter back into a counter.Counter.
-func (c *Counter) Thaw(base float64) *counter.Counter {
-	t := counter.New(base)
+func (c *Counter) Thaw() *counter.Counter {
+	t := counter.New(c.Keys.Base, c.Keys.Missing)
 
 	for s, idx := range c.Keys.Positions {
 		t.Set(s, c.values[idx])
@@ -177,7 +185,7 @@ func (c *Counter) String() string {
 	return s
 }
 
-func (c *Counter) ArgMax() (string, float64) {
+func (c *Counter) ArgMax() (gnlp.Feature, float64) {
 	idx := c.values.argmax()
 
     return c.Keys.Keys[idx], c.values[idx]

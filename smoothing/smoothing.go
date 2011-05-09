@@ -29,7 +29,3 @@ func JelinekMercer(counts, fallbackCounts gnlp.Counter, fallbackWeight func(key 
 
 	counts.Normalize()
 }
-
-func Katz(counts, fallbackCounts gnlp.Counter, reliableCutoff float64) {
-	
-}

@@ -25,6 +25,11 @@ func (c *Counter) Get(k gnlp.Feature) float64 {
 
 // Set a value for a key
 func (c *Counter) Set(k gnlp.Feature, v float64) {
+	if v == c.Base {
+		// remove the key
+		c.values[k] = v, false
+	}
+
 	c.values[k] = v
 }
 

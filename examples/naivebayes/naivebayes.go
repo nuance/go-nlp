@@ -1,26 +1,27 @@
 package main
 
+import "gnlp"
+
 import counter "gnlp/counter"
+import F "gnlp/features"
 import frozencounter "gnlp/frozencounter"
 
-type Class string
-
 type NaiveBayes struct {
-	FeatureLogDistributions map[string]*frozencounter.Counter
+	FeatureLogDistributions map[gnlp.Feature]*frozencounter.Counter
 	ClassLogPrior           *frozencounter.Counter
 }
 
 type Datum struct {
-	class    Class
-	features []string
+	class    F.Word
+	features []F.Word
 }
 
 func Train(data []Datum) *NaiveBayes {
 	class := counter.New(0.0)
-	features := make(map[string]*counter.Counter)
+	features := make(map[gnlp.Feature]*counter.Counter)
 
 	for _, datum := range data {
-		class.Incr(string(datum.class))
+		class.Incr(F.Word(datum.class))
 		for _, f := range datum.features {
 			dist, ok := features[f]
 
@@ -29,7 +30,7 @@ func Train(data []Datum) *NaiveBayes {
 				features[f] = dist
 			}
 
-			dist.Incr(string(datum.class))
+			dist.Incr(F.Word(datum.class))
 		}
 	}
 
@@ -50,7 +51,7 @@ func Train(data []Datum) *NaiveBayes {
 	return &NaiveBayes{FeatureLogDistributions: frozenFeatures, ClassLogPrior: frozenClass}
 }
 
-func (nb *NaiveBayes) Classify(features []string) (Class, float64) {
+func (nb *NaiveBayes) Classify(features []F.Word) (F.Word, float64) {
 	score := nb.ClassLogPrior.Copy()
 
 	for _, f := range features {
@@ -61,5 +62,5 @@ func (nb *NaiveBayes) Classify(features []string) (Class, float64) {
 	score.Normalize()
 
 	c, probability := score.ArgMax()
-	return Class(c), probability
+	return c.(F.Word), probability
 }

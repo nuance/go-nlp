@@ -1,28 +1,20 @@
 package features
 
 import "fmt"
-import "gnlp"
 import "strings"
 
-type Word string
+func WordCombine(a, b string) string {
 
-func (w Word) Combine(o gnlp.Feature) gnlp.Feature {
-	ow := o.(Word)
-
-	return Word(fmt.Sprintf("%s %s", string(w), string(ow)))
+	return fmt.Sprintf("%s %s", a, b)
 }
 
-func (w Word) Split() (gnlp.Feature, gnlp.Feature) {
-	result := strings.Split(string(w), " ", 1)
+func WordSplit(w string) (string, string) {
+	result := strings.Split(w, " ", 1)
 
 	if len(result) == 1 {
-		return Word(""), w
+		return "", w
 	}
 
-	return Word(result[0]), Word(result[1])
-}
-
-func (w Word) String() string {
-	return string(w)
+	return result[0], result[1]
 }
 

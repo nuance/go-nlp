@@ -7,8 +7,8 @@ import "fmt"
 import "math"
 
 type KeySet struct {
-	Keys      []gnlp.Feature
-	Positions map[gnlp.Feature]int
+	Keys      []string
+	Positions map[string]int
 	Hash      uint64
 	Base      float64
 }
@@ -63,14 +63,14 @@ func internKeySet(ks *KeySet) *KeySet {
 }
 
 // Build a key set of the keys + a crc64 of the keys (which we can
-// efficiently compare). Also returns an index of gnlp.Feature to position
-func NewKeySet(keys []gnlp.Feature, base float64) *KeySet {
+// efficiently compare). Also returns an index of string to position
+func NewKeySet(keys []string, base float64) *KeySet {
 	c := crc.New(crc.MakeTable(crc.ISO))
-	index := make(map[gnlp.Feature]int)
+	index := make(map[string]int)
 
 	for idx, s := range keys {
 		index[s] = idx
-		c.Write([]byte(s.String()))
+		c.Write([]byte(s))
 	}
 
 	return internKeySet(&KeySet{Hash: c.Sum64(), Keys: keys, Positions: index, Base: base})
@@ -103,8 +103,8 @@ func Freeze(c *counter.Counter) *Counter {
 	return FreezeWithKeySet(c, ks)
 }
 
-func mergeKeys(counters []*counter.Counter) []gnlp.Feature {
-	keys := make(map[gnlp.Feature]bool)
+func mergeKeys(counters []*counter.Counter) []string {
+	keys := make(map[string]bool)
 
 	for _, c := range counters {
 		for _, k := range c.Keys() {
@@ -112,7 +112,7 @@ func mergeKeys(counters []*counter.Counter) []gnlp.Feature {
 		}
 	}
 
-	r := make([]gnlp.Feature, 0, len(keys))
+	r := make([]string, 0, len(keys))
 	for k, _ := range keys {
 		r = append(r, k)
 	}
@@ -134,8 +134,8 @@ func FreezeMany(counters []*counter.Counter) []*Counter {
 	return results
 }
 
-func FreezeMap(counters map[gnlp.Feature]*counter.Counter) map[gnlp.Feature]*Counter {
-	order := make([]gnlp.Feature, 0, len(counters))
+func FreezeMap(counters map[string]*counter.Counter) map[string]*Counter {
+	order := make([]string, 0, len(counters))
 	for k, _ := range counters {
 		order = append(order, k)
 	}
@@ -147,7 +147,7 @@ func FreezeMap(counters map[gnlp.Feature]*counter.Counter) map[gnlp.Feature]*Cou
 
 	frozenList := FreezeMany(dists)
 
-	frozen := make(map[gnlp.Feature]*Counter)
+	frozen := make(map[string]*Counter)
 	for idx, feature := range order {
 		frozen[feature] = frozenList[idx]
 	}
@@ -155,7 +155,7 @@ func FreezeMap(counters map[gnlp.Feature]*counter.Counter) map[gnlp.Feature]*Cou
 	return frozen
 }
 
-func (c *Counter) Get(f gnlp.Feature) float64 {
+func (c *Counter) Get(f string) float64 {
 	idx, ok := c.Keys.Positions[f]
 
 	if !ok {
@@ -165,7 +165,7 @@ func (c *Counter) Get(f gnlp.Feature) float64 {
 	return c.values[idx]
 }
 
-func (c *Counter) Set(f gnlp.Feature, val float64) {
+func (c *Counter) Set(f string, val float64) {
 	idx, ok := c.Keys.Positions[f]
 
 	if !ok {
@@ -175,7 +175,7 @@ func (c *Counter) Set(f gnlp.Feature, val float64) {
 	c.values[idx] = val
 }
 
-func (c *Counter) Incr(f gnlp.Feature) {
+func (c *Counter) Incr(f string) {
 	idx, ok := c.Keys.Positions[f]
 
 	if !ok {
@@ -212,7 +212,7 @@ func (c *Counter) String() string {
 	return s
 }
 
-func (c *Counter) ArgMax() (gnlp.Feature, float64) {
+func (c *Counter) ArgMax() (string, float64) {
 	idx := c.values.argmax()
 
 	return c.Keys.Keys[idx], c.values[idx]
@@ -286,7 +286,7 @@ func (c *Counter) Divide(o *Counter) {
 }
 
 // Apply a function to every value in the counter
-func (c *Counter) Apply(op func(f *gnlp.Feature, a float64) float64) {
+func (c *Counter) Apply(op func(f *string, a float64) float64) {
 	for idx, v := range c.values {
 		c.values[idx] = op(&c.Keys.Keys[idx], v)
 	}
@@ -294,12 +294,12 @@ func (c *Counter) Apply(op func(f *gnlp.Feature, a float64) float64) {
 
 // Log every value in the counter (including the default)
 func (c *Counter) Log() {
-	c.Apply(func (f *gnlp.Feature, a float64) float64 { return math.Log(a) })
+	c.Apply(func(f *string, a float64) float64 { return math.Log(a) })
 }
 
 // Exponentiate every value in the counter (including the default)
 func (c *Counter) Exp() {
-	c.Apply(func (f *gnlp.Feature, a float64) float64 { return math.Exp(a) })
+	c.Apply(func(f *string, a float64) float64 { return math.Exp(a) })
 }
 
 // Normalize a counter s.t. the sum over values is now 1.0
@@ -315,7 +315,7 @@ func (c *Counter) LogNormalize() {
 	sum := c.values.sum()
 	logSum := math.Log(sum)
 
-	c.Apply(func (f *gnlp.Feature, a float64) float64 { return math.Log(a) - logSum })
+	c.Apply(func(f *string, a float64) float64 { return math.Log(a) - logSum })
 }
 
 var _ gnlp.Counter = new(Counter)

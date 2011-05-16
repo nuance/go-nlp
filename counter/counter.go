@@ -4,17 +4,17 @@ import "gnlp"
 import "math"
 
 type Counter struct {
-	values map[gnlp.Feature]float64
+	values map[string]float64
 	// default value for missing items
 	Base float64
 }
 
 func New(base float64) *Counter {
-	return &Counter{make(map[gnlp.Feature]float64), base}
+	return &Counter{make(map[string]float64), base}
 }
 
 // Return a value for a key (falling back to the default)
-func (c *Counter) Get(k gnlp.Feature) float64 {
+func (c *Counter) Get(k string) float64 {
 	v, ok := c.values[k]
 
 	if ok {
@@ -24,7 +24,7 @@ func (c *Counter) Get(k gnlp.Feature) float64 {
 }
 
 // Set a value for a key
-func (c *Counter) Set(k gnlp.Feature, v float64) {
+func (c *Counter) Set(k string, v float64) {
 	if v == c.Base {
 		// remove the key
 		c.values[k] = v, false
@@ -34,14 +34,14 @@ func (c *Counter) Set(k gnlp.Feature, v float64) {
 }
 
 // Increment a value
-func (c *Counter) Incr(k gnlp.Feature) {
+func (c *Counter) Incr(k string) {
 	v := c.Get(k)
 	c.Set(k, v+1)
 }
 
 // Return a list of keys for this counter
-func (c *Counter) Keys() []gnlp.Feature {
-	result := make([]gnlp.Feature, 0, len(c.values))
+func (c *Counter) Keys() []string {
+	result := make([]string, 0, len(c.values))
 
 	for k, v := range c.values {
 		// Don't track default values
@@ -56,13 +56,13 @@ func (c *Counter) Keys() []gnlp.Feature {
 }
 
 // Combine two sets of keys w/o duplicates
-func mergeKeys(a, b []gnlp.Feature) <-chan gnlp.Feature {
-	out := make(chan gnlp.Feature)
+func mergeKeys(a, b []string) <-chan string {
+	out := make(chan string)
 
-	go func(out chan<- gnlp.Feature) {
+	go func(out chan<- string) {
 		defer close(out)
 
-		seen := make(map[gnlp.Feature]bool)
+		seen := make(map[string]bool)
 
 		for _, k := range a {
 			out <- k
@@ -81,7 +81,7 @@ func mergeKeys(a, b []gnlp.Feature) <-chan gnlp.Feature {
 
 // Apply an operation on two counters, returning new counter with keys
 // defined by the keys function
-func operate(a, b *Counter, op func(a, b float64) float64, keys func(a, b []gnlp.Feature) <-chan gnlp.Feature) *Counter {
+func operate(a, b *Counter, op func(a, b float64) float64, keys func(a, b []string) <-chan string) *Counter {
 	result := New(op(a.Base, b.Base))
 
 	for k := range keys(a.Keys(), b.Keys()) {
@@ -113,7 +113,7 @@ func Divide(a, b *Counter) *Counter {
 
 // Apply an operation on two counters, updating the first counter with keys
 // defined by the keys function
-func (a *Counter) operate(b *Counter, op func(a, b float64) float64, keys func(a, b []gnlp.Feature) <-chan gnlp.Feature) {
+func (a *Counter) operate(b *Counter, op func(a, b float64) float64, keys func(a, b []string) <-chan string) {
 	a.Base = op(a.Base, b.Base)
 
 	for k := range keys(a.Keys(), b.Keys()) {
@@ -143,7 +143,7 @@ func (c *Counter) Divide(o *Counter) {
 
 // Apply a function to every value in the counter (including the
 // default)
-func (c *Counter) Apply(op func(k *gnlp.Feature, a float64) float64) {
+func (c *Counter) Apply(op func(k *string, a float64) float64) {
 	c.Base = op(nil, c.Base)
 
 	for k, v := range c.values {
@@ -153,12 +153,12 @@ func (c *Counter) Apply(op func(k *gnlp.Feature, a float64) float64) {
 
 // Log every value in the counter (including the default)
 func (c *Counter) Log() {
-	c.Apply(func(s *gnlp.Feature, f float64) float64 { return math.Log(f) })
+	c.Apply(func(s *string, f float64) float64 { return math.Log(f) })
 }
 
 // Exponentiate every value in the counter (including the default)
 func (c *Counter) Exp() {
-	c.Apply(func(s *gnlp.Feature, f float64) float64 { return math.Exp(f) })
+	c.Apply(func(s *string, f float64) float64 { return math.Exp(f) })
 }
 
 // Reduce over the values in the counter (not including the default
@@ -176,7 +176,7 @@ func (c *Counter) reduce(base float64, op func(a, b float64) float64) float64 {
 // Normalize a counter s.t. the sum over values is now 1.0
 func (c *Counter) Normalize() {
 	sum := c.reduce(0.0, func(a, b float64) float64 { return a + b })
-	c.Apply(func(s *gnlp.Feature, a float64) float64 { return a / sum })
+	c.Apply(func(s *string, a float64) float64 { return a / sum })
 }
 
 // Special case of normalize - normalize a distribution and turn it
@@ -186,8 +186,7 @@ func (c *Counter) LogNormalize() {
 	sum := c.reduce(0.0, func(a, b float64) float64 { return a + b })
 	logSum := math.Log(sum)
 
-	c.Apply(func(s *gnlp.Feature, a float64) float64 { return math.Log(a) - logSum })
+	c.Apply(func(s *string, a float64) float64 { return math.Log(a) - logSum })
 }
 
 var _ gnlp.Counter = New(0.0)
-

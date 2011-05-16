@@ -1,25 +1,14 @@
 package gnlp
 
-type Feature interface {
-	// combine another feature with this feature. For unigrams, this
-	// means produce the bigram from this and f, like this: "dog", f: "hot"
-	// return "hot dog"
-	Combine(f Feature) Feature
-	// Split this feature into a new feature and it's history. For a
-	// trigram feature "good hot dog", return "good" and "hot dog"
-	Split() (Feature, Feature)
-	String() string
-}
-
 type Counter interface {
-	Get(Feature) float64
-	Set(Feature, float64)
-	Incr(Feature)
+	Get(string) float64
+	Set(string, float64)
+	Incr(string)
 
 	Log()
 	Exp()
 	Normalize()
 	LogNormalize()
 
-	Apply(op func(*Feature, float64) float64)
+	Apply(op func(*string, float64) float64)
 }

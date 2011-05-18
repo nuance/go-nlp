@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FOLDERS="gnlp counter frozencounter smoothing features"
+FOLDERS="gnlp counter frozencounter smoothing features minimizer"
 
 for folder in $FOLDERS; do
 	pushd $folder > /dev/null

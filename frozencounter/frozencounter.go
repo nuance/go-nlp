@@ -83,6 +83,10 @@ func New(ks *KeySet) *Counter {
 	return &Counter{ks, v}
 }
 
+func (c *Counter) Reset(v float64) {
+	c.values.reset(v)
+}
+
 // Freeze a counter, using a previously-generated keyset and
 // index.
 func FreezeWithKeySet(c *counter.Counter, ks *KeySet) *Counter {
@@ -246,6 +250,10 @@ func Divide(a, b *Counter) *Counter {
 	return result
 }
 
+func Dot(a, b *Counter) float64 {
+	return a.values.dot(b.values)
+}
+
 // Apply an operation on two counters, updating the first counter
 func (a *Counter) operate(b *Counter, op func(a, b float64) float64) {
 	if a.Keys != b.Keys {
@@ -280,9 +288,18 @@ func (c *Counter) Multiply(o *Counter) {
 	c.operate(o, func(a, b float64) float64 { return a * b })
 }
 
+func (c *Counter) Scale(val float64) {
+	c.values.scale(val)
+}
+
 // Element-wise divide c by o. Note that this is not blas-accelerated.
 func (c *Counter) Divide(o *Counter) {
 	c.operate(o, func(a, b float64) float64 { return a / b })
+}
+
+// Compute the dot product of c & o.
+func (c *Counter) DotProduct(o *Counter) float64 {
+	return c.values.dot(o.values)
 }
 
 // Apply a function to every value in the counter
@@ -300,6 +317,10 @@ func (c *Counter) Log() {
 // Exponentiate every value in the counter (including the default)
 func (c *Counter) Exp() {
 	c.Apply(func(f *string, a float64) float64 { return math.Exp(a) })
+}
+
+func (c *Counter) Sum() float64 {
+	return c.values.sum()
 }
 
 // Normalize a counter s.t. the sum over values is now 1.0

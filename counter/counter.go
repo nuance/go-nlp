@@ -173,6 +173,26 @@ func (c *Counter) reduce(base float64, op func(a, b float64) float64) float64 {
 	return val
 }
 
+func (c *Counter) ArgMax() (string, float64) {
+	var maxKey *string = nil
+	maxVal := 0.0
+
+	c.Apply(func (key *string, val float64) float64 {
+		if val > maxVal || maxKey == nil {
+			maxKey = key
+			maxVal = val
+		}
+
+		return val
+	})
+
+	return *maxKey, maxVal
+}
+
+func (c *Counter) Sum() float64 {
+	return c.reduce(c.Base, func (a, b float64) float64 { return a + b })
+}
+
 // Normalize a counter s.t. the sum over values is now 1.0
 func (c *Counter) Normalize() {
 	sum := c.reduce(0.0, func(a, b float64) float64 { return a + b })

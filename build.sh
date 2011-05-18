@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FOLDERS="gnlp counter frozencounter smoothing features examples/naivebayes examples/maxent"
+FOLDERS="gnlp counter frozencounter smoothing features minimizer examples/naivebayes examples/maxent"
 
 for folder in $FOLDERS
 do 

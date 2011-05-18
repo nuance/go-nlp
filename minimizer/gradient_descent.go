@@ -3,7 +3,6 @@ package minimizer
 import "log"
 
 type Vector interface {
-	Add(Vector)
 	AddScaled(float64, Vector)
 
 	Negate()
@@ -107,11 +106,12 @@ func (m *minimizer) iterate() {
 func GradientDescent(opt MinimizerOptions, fn DifferentiableFunction, l *log.Logger) Vector {
 	l.Println("Starting gradient descent")
 
-	for m := start(opt, fn, l); !m.finished(); m.iterate() {
+	var m *minimizer
+	for m = start(opt, fn, l); !m.finished(); m.iterate() {
 		l.Printf("Iteration %d", m.iteration)
 	}
 
-	return fn.InitialWeights()
+	return m.point
 }
 
 // FIXME: docs

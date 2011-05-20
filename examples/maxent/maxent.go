@@ -75,8 +75,7 @@ func (w *maxentWeights) expectedCounts(labelDistribution []*frozencounter.Counte
 
 	for idx, datum := range w.data {
 		for _, label := range w.labels {
-			counts := frozencounter.Multiply(datum.featureCounts, labelDistribution[idx])
-			expectedCounts.Get(label).Add(counts)
+			expectedCounts.Get(label).AddScaled(labelDistribution[idx].Get(label), datum.featureCounts)
 		}
 	}
 

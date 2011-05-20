@@ -52,6 +52,7 @@ func (m *minimizer) finished() bool {
 
 	if len(m.pointHistory) > 0 {
 		change := (m.value - m.lastValue) / ((m.value + m.lastValue + m.opt.Epsilon) / 2.0)
+		m.l.Printf("Change: %f - %f\n", m.value, m.lastValue)
 
 		done = done && change < m.opt.Tolerance
 	}
@@ -98,6 +99,7 @@ func (m *minimizer) iterate() {
 	m.pointHistory = append(m.pointHistory, m.point)
 	m.gradientHistory = append(m.gradientHistory, m.gradient)
 
+	m.lastValue = m.value
 	m.value = val
 	m.gradient = grad
 	m.point = point
@@ -121,7 +123,7 @@ func implicitMultiply(hessianScale float64, gradient Vector, gradientHistory, po
 	alpha := []float64{}
 	right := gradient.Copy()
 
-	for i := len(gradientHistory); i >= 0; i-- {
+	for i := len(gradientHistory) - 1; i >= 0; i-- {
 		pointDelta := pointHistory[i]
 		derivativeDelta := gradientHistory[i]
 
@@ -142,8 +144,8 @@ func implicitMultiply(hessianScale float64, gradient Vector, gradientHistory, po
 	left.Scale(hessianScale)
 
 	for i := 0; i < len(gradientHistory); i++ {
-		a := alpha[-i]
-		r := rho[-i]
+		a := alpha[len(alpha)-1-i]
+		r := rho[len(rho)-1-i]
 		pointDelta := pointHistory[i]
 		derivativeDelta := gradientHistory[i]
 

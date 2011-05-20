@@ -62,11 +62,21 @@ func (cv *CounterVector) Set(key string, c Counter) {
 	copy(c.values[pos*cv.size:(pos+1)*cv.size], c.values)
 }
 
+func (cv *CounterVector) check(o minimizer.Vector) {
+	if cv.Keys != o.(*CounterVector).Keys || cv.SubKeys != o.(*CounterVector).SubKeys {
+		panic("incompatible keysets")
+	}
+}
+
 func (cv *CounterVector) Subtract(o minimizer.Vector) {
+	cv.check(o)
+
 	cv.AddScaled(-1.0, o.(*CounterVector))
 }
 
 func (cv *CounterVector) AddScaled(scale float64, o minimizer.Vector) {
+	cv.check(o)
+
 	cv.values.addScaled(scale, o.(*CounterVector).values)
 }
 
@@ -83,6 +93,8 @@ func (cv *CounterVector) Copy() minimizer.Vector {
 }
 
 func (cv *CounterVector) DotProduct(o minimizer.Vector) float64 {
+	cv.check(o)
+
 	return cv.values.dot(o.(*CounterVector).values)
 }
 

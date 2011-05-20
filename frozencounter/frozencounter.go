@@ -156,8 +156,18 @@ func (c *Counter) ArgMax() (string, float64) {
 	return c.Keys.Keys[idx], c.values[idx]
 }
 
+func (c *Counter) check(o *Counter) {
+	if c.Keys != o.Keys {
+		fmt.Println(c)
+		fmt.Println(o)
+		panic("incompatible keysets")
+	}
+}
+
 // Add a to b, returning a new counter
 func Add(a, b *Counter) *Counter {
+	a.check(b)
+
 	result := a.Copy()
 	result.Add(b)
 	return result
@@ -165,6 +175,8 @@ func Add(a, b *Counter) *Counter {
 
 // Subtract b from a, returning a new counter
 func Subtract(a, b *Counter) *Counter {
+	a.check(b)
+
 	result := a.Copy()
 	result.Subtract(b)
 	return result
@@ -172,6 +184,8 @@ func Subtract(a, b *Counter) *Counter {
 
 // Multiply a by b, returning a new counter
 func Multiply(a, b *Counter) *Counter {
+	a.check(b)
+
 	result := a.Copy()
 	result.Multiply(b)
 	return result
@@ -179,46 +193,53 @@ func Multiply(a, b *Counter) *Counter {
 
 // Divide a by b, returning a new counter
 func Divide(a, b *Counter) *Counter {
+	a.check(b)
+
 	result := a.Copy()
 	result.Divide(b)
 	return result
 }
 
 func Dot(a, b *Counter) float64 {
+	a.check(b)
+
 	return a.values.dot(b.values)
 }
 
 // Apply an operation on two counters, updating the first counter
-func (a *Counter) operate(b *Counter, op func(a, b float64) float64) {
-	if a.Keys != b.Keys {
-		panic("Incoompatible frozen counters")
-	}
+func (c *Counter) operate(o *Counter, op func(a, b float64) float64) {
+	c.check(o)
 
-	for idx, val := range a.values {
-		a.values[idx] = op(val, b.values[idx])
+	for idx, val := range c.values {
+		c.values[idx] = op(val, o.values[idx])
 	}
 }
 
 // Add o to c
 func (c *Counter) Add(o *Counter) {
-	if c.Keys != o.Keys {
-		panic("Incoompatible frozen counters")
-	}
+	c.check(o)
 
 	c.values.add(o.values)
 }
 
+// Add o to c
+func (c *Counter) AddScaled(scale float64, o *Counter) {
+	c.check(o)
+
+	c.values.addScaled(scale, o.values)
+}
+
 // Subtract o from c
 func (c *Counter) Subtract(o *Counter) {
-	if c.Keys != o.Keys {
-		panic("Incoompatible frozen counters")
-	}
+	c.check(o)
 
 	c.values.subtract(o.values)
 }
 
 // Element-wise multiply c by o. Note that this is not blas-accelerated.
 func (c *Counter) Multiply(o *Counter) {
+	c.check(o)
+
 	c.operate(o, func(a, b float64) float64 { return a * b })
 }
 
@@ -228,11 +249,15 @@ func (c *Counter) Scale(val float64) {
 
 // Element-wise divide c by o. Note that this is not blas-accelerated.
 func (c *Counter) Divide(o *Counter) {
+	c.check(o)
+
 	c.operate(o, func(a, b float64) float64 { return a / b })
 }
 
 // Compute the dot product of c & o.
 func (c *Counter) DotProduct(o *Counter) float64 {
+	c.check(o)
+
 	return c.values.dot(o.values)
 }
 

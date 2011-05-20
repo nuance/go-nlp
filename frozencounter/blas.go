@@ -41,6 +41,14 @@ func (v vector) add(o vector) {
 	C.cblas_daxpy(C.int(len(v)), 1.0, input, 1, output, 1)
 }
 
+// v += scale * o
+func (v vector) addScaled(scale float64, o vector) {
+	input := (*C.double)(unsafe.Pointer(&o[0]))
+	output := (*C.double)(unsafe.Pointer(&v[0]))
+
+	C.cblas_daxpy(C.int(len(v)), C.double(scale), input, 1, output, 1)
+}
+
 // v -= o
 func (v vector) subtract(o vector) {
 	input := (*C.double)(unsafe.Pointer(&o[0]))

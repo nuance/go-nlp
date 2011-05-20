@@ -3,6 +3,7 @@ package minimizer
 import "log"
 
 type Vector interface {
+	Subtract(Vector)
 	AddScaled(float64, Vector)
 
 	Negate()

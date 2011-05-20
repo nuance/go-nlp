@@ -6,8 +6,8 @@ import frozencounter "gnlp/frozencounter"
 import minimizer "gnlp/minimizer"
 
 type MaxEnt struct {
-	Weights map[string]*frozencounter.Counter
-	Counts map[string]*frozencounter.Counter
+	Weights *frozencounter.CounterVector
+	Counts *frozencounter.CounterVector
 	scorer *maxentWeights
 }
 
@@ -18,7 +18,7 @@ type Datum struct {
 	featureCounts *frozencounter.Counter
 }
 
-func tally(data []Datum) (counts map[string]*frozencounter.Counter, features *frozencounter.KeySet, labels []string) {
+func tally(data []Datum) (counts *frozencounter.CounterVector, features *frozencounter.KeySet, labels []string) {
 	rawCounts := map[string]*counter.Counter{}
 
 	datumCounts := []*counter.Counter{}
@@ -40,10 +40,10 @@ func tally(data []Datum) (counts map[string]*frozencounter.Counter, features *fr
 		data[idx].featureCounts = c
 	}
 
-	counts = frozencounter.FreezeMap(rawCounts)
+	counts = frozencounter.NewCounterVector(frozencounter.FreezeMap(rawCounts))
 
 	features = data[0].featureCounts.Keys
-	for label, _ := range counts {
+	for label, _ := range counts.Extract() {
 		labels = append(labels, label)
 	}
 	return
@@ -52,16 +52,16 @@ func tally(data []Datum) (counts map[string]*frozencounter.Counter, features *fr
 type maxentWeights struct {
 	sigma float64
 	data []Datum
-	counts map[string]*frozencounter.Counter
+	counts *frozencounter.CounterVector
 	labels []string
 	features *frozencounter.KeySet
 }
 
 // Calculate the label distribution of features given weights, storing the result in out
-func (w *maxentWeights) labelDistribution(counts *frozencounter.Counter, weights map[string]*frozencounter.Counter) *frozencounter.Counter {
+func (w *maxentWeights) labelDistribution(counts *frozencounter.Counter, weights *frozencounter.CounterVector) *frozencounter.Counter {
 	out := counter.New(0.0)
 
-	for label, featureWeights := range weights {
+	for label, featureWeights := range weights.Extract() {
 		out.Set(label, featureWeights.DotProduct(counts))
 	}
 
@@ -70,31 +70,27 @@ func (w *maxentWeights) labelDistribution(counts *frozencounter.Counter, weights
 }
 
 // given distribution for each datum, what's the expected count
-func (w *maxentWeights) expectedCounts(labelDistribution []*frozencounter.Counter) (expectedCounts map[string]*frozencounter.Counter) {
-	for _, label := range w.labels {
-		expectedCounts[label] = frozencounter.New(w.features)
-	}
+func (w *maxentWeights) expectedCounts(labelDistribution []*frozencounter.Counter) (expectedCounts *frozencounter.CounterVector) {
+	expectedCounts = w.counts.Clone()
 
 	for idx, datum := range w.data {
 		for _, label := range w.labels {
 			counts := frozencounter.Multiply(datum.featureCounts, labelDistribution[idx])
-			expectedCounts[label].Add(counts)
+			expectedCounts.Get(label).Add(counts)
 		}
 	}
 
 	return
 }
 
-func (w *maxentWeights) InitialWeights() (weights map[string]*frozencounter.Counter) {
-	weights = map[string]*frozencounter.Counter{}
-	for _, label := range w.labels {
-		weights[label] = frozencounter.New(w.features)
-	}
-	return
+func (w *maxentWeights) InitialWeights() minimizer.Vector {
+	return w.counts.Clone()
 }
 
-func (w *maxentWeights) Gradient(weights map[string]*frozencounter.Counter) (value float64, gradient map[string]*frozencounter.Counter) {
-	value = 0.0
+func (w *maxentWeights) Gradient(Weights minimizer.Vector) (float64, minimizer.Vector) {
+	weights := Weights.(*frozencounter.CounterVector)
+
+	value := 0.0
 
 	labelProbs := []*frozencounter.Counter{}
 	for _, datum := range w.data {
@@ -105,33 +101,33 @@ func (w *maxentWeights) Gradient(weights map[string]*frozencounter.Counter) (val
 		labelProbs = append(labelProbs, labelLogProbs)
 	}
 
-	gradient = w.expectedCounts(labelProbs)
-	for label, featureCounts := range gradient {
-		featureCounts.Subtract(w.counts[label])
-	}
+	gradient := w.expectedCounts(labelProbs)
+	gradient.Subtract(w.counts)
 
 	// And penalize
 	if w.sigma != 0.0 {
 		penalty := 0.0
 
-		for label, featureWeights := range weights {
+		for label, featureWeights := range weights.Extract() {
 			sqSums := featureWeights.Copy()
 			sqSums.Apply(func(f *string, a float64) float64 { return a * a })
 			penalty += sqSums.Sum()
 
 			penalizedWeights := featureWeights.Copy()
 			penalizedWeights.Scale(1 / (w.sigma * w.sigma))
-			gradient[label].Add(penalizedWeights)
+
+			gradient.Get(label).Add(penalizedWeights)
 		}
 
 		penalty /= 2 * w.sigma * w.sigma
 		value += penalty
 	}
 
-	return
+	return value, gradient
 }
 
-func (w *maxentWeights) Value(weights map[string]*frozencounter.Counter) (value float64) {
+func (w *maxentWeights) Value(Weights minimizer.Vector) (value float64) {
+	weights := Weights.(*frozencounter.CounterVector)
 	value = 0.0
 
 	for _, datum := range w.data {
@@ -143,7 +139,7 @@ func (w *maxentWeights) Value(weights map[string]*frozencounter.Counter) (value 
 	if w.sigma != 0.0 {
 		penalty := 0.0
 
-		for _, featureWeights := range weights {
+		for _, featureWeights := range weights.Extract() {
 			sqSums := featureWeights.Copy()
 			sqSums.Apply(func(f *string, a float64) float64 { return a * a })
 			penalty += sqSums.Sum()
@@ -161,10 +157,11 @@ func Train(data []Datum, l *log.Logger) *MaxEnt {
 	counts, features, labels := tally(data)
 
 	weightFn := &maxentWeights{sigma: 0.01, data: data, counts: counts, features: features, labels: labels}
+
 	l.Println("Minimizing")
 	weights := minimizer.GradientDescent(minimizer.Standard, weightFn, l)
 
-	return &MaxEnt{Counts: counts, Weights: weights, scorer: weightFn}
+	return &MaxEnt{Counts: counts, Weights: weights.(*frozencounter.CounterVector), scorer: weightFn}
 }
 
 func (me *MaxEnt) Classify(features []string) (label string, score float64) {

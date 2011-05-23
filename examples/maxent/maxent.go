@@ -1,6 +1,7 @@
 package main
 
 import "log"
+import "math"
 import counter "gnlp/counter"
 import frozencounter "gnlp/frozencounter"
 import minimizer "gnlp/minimizer"
@@ -55,6 +56,7 @@ type maxentWeights struct {
 	counts *frozencounter.CounterVector
 	labels []string
 	features *frozencounter.KeySet
+	l *log.Logger
 }
 
 // Calculate the label distribution of features given weights, storing the result in out
@@ -83,7 +85,10 @@ func (w *maxentWeights) expectedCounts(labelDistribution []*frozencounter.Counte
 }
 
 func (w *maxentWeights) InitialWeights() minimizer.Vector {
-	return w.counts.Clone()
+	weights := w.counts.Clone()
+	weights.Reset(0.01)
+
+	return weights
 }
 
 func (w *maxentWeights) Gradient(Weights minimizer.Vector) (float64, minimizer.Vector) {
@@ -122,6 +127,8 @@ func (w *maxentWeights) Gradient(Weights minimizer.Vector) (float64, minimizer.V
 		value += penalty
 	}
 
+	w.l.Printf("Found new gradient and value: %f\n", value)
+
 	return value, gradient
 }
 
@@ -134,6 +141,8 @@ func (w *maxentWeights) Value(Weights minimizer.Vector) (value float64) {
 		value -= labelLogProbs.Get(datum.class)
 	}
 
+	w.l.Printf("Raw value: %f\n", value)
+
 	// And penalize
 	if w.sigma != 0.0 {
 		penalty := 0.0
@@ -145,8 +154,12 @@ func (w *maxentWeights) Value(Weights minimizer.Vector) (value float64) {
 		}
 
 		penalty /= 2 * w.sigma * w.sigma
+		w.l.Printf("Penalty: %f\n", penalty)
+
 		value += penalty
 	}
+
+	w.l.Printf("Found new value: %f\n", value)
 
 	return
 }
@@ -155,7 +168,7 @@ func Train(data []Datum, l *log.Logger) *MaxEnt {
 	l.Println("Building features")
 	counts, features, labels := tally(data)
 
-	weightFn := &maxentWeights{sigma: 0.01, data: data, counts: counts, features: features, labels: labels}
+	weightFn := &maxentWeights{sigma: 0.01, data: data, counts: counts, features: features, labels: labels, l: l}
 
 	l.Println("Minimizing")
 	weights := minimizer.GradientDescent(minimizer.Standard, weightFn, l)
@@ -172,5 +185,5 @@ func (me *MaxEnt) Classify(features []string) (label string, score float64) {
 	logProbs := me.scorer.labelDistribution(counts, me.Weights)
 
 	label, score = logProbs.ArgMax()
-	return
+	return label, math.Exp(score)
 }

@@ -62,6 +62,10 @@ func (cv *CounterVector) Set(key string, c Counter) {
 	copy(c.values[pos*cv.size:(pos+1)*cv.size], c.values)
 }
 
+func (c *CounterVector) Reset(v float64) {
+	c.values.reset(v)
+}
+
 func (cv *CounterVector) check(o minimizer.Vector) {
 	if cv.Keys != o.(*CounterVector).Keys || cv.SubKeys != o.(*CounterVector).SubKeys {
 		panic("incompatible keysets")

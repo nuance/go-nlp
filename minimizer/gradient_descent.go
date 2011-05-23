@@ -52,7 +52,7 @@ func (m *minimizer) finished() bool {
 
 	if len(m.pointHistory) > 0 {
 		change := (m.value - m.lastValue) / ((m.value + m.lastValue + m.opt.Epsilon) / 2.0)
-		m.l.Printf("Change: %f - %f\n", m.value, m.lastValue)
+		m.l.Printf("Change: %f - %f (%f scaled)\n", m.value, m.lastValue, change)
 
 		done = done && change < m.opt.Tolerance
 	}

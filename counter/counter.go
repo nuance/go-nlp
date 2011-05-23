@@ -1,6 +1,7 @@
 package counter
 
 import "gnlp"
+import "fmt"
 import "math"
 
 type Counter struct {
@@ -53,6 +54,18 @@ func (c *Counter) Keys() []string {
 	}
 
 	return result
+}
+
+func (c *Counter) String() string {
+	s := "Counter: {"
+
+	for _, key := range c.Keys() {
+		s += fmt.Sprintf("'%s': %f, ", key, c.Get(key))
+	}
+
+	s += "}"
+
+	return s
 }
 
 // Combine two sets of keys w/o duplicates

@@ -1,5 +1,6 @@
 package main
 
+import "fmt"
 import "log"
 import "math"
 import counter "gnlp/counter"
@@ -17,6 +18,10 @@ type Datum struct {
 	features []string
 
 	featureCounts *frozencounter.Counter
+}
+
+func (d Datum) String() string {
+	return fmt.Sprintf("%s: %s", d.class, d.features)
 }
 
 func tally(data []Datum) (counts *frozencounter.CounterVector, features *frozencounter.KeySet, labels []string) {
@@ -93,7 +98,6 @@ func (w *maxentWeights) InitialWeights() minimizer.Vector {
 
 func (w *maxentWeights) Gradient(Weights minimizer.Vector) (float64, minimizer.Vector) {
 	weights := Weights.(*frozencounter.CounterVector)
-
 	value := 0.0
 
 	labelProbs := []*frozencounter.Counter{}

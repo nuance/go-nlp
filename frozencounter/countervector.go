@@ -1,6 +1,7 @@
 package frozencounter
 
 import "gnlp/minimizer"
+import "fmt"
 
 // A countervector stores counters indexed by strings
 type CounterVector struct {
@@ -42,6 +43,16 @@ func (cv *CounterVector) Extract() map[string]*Counter {
 	}
 
 	return result
+}
+
+func (cv *CounterVector) String() string {
+	result := "CounterVector{"
+
+	for _, label := range cv.Keys.Keys {
+		result += fmt.Sprintf("[%s]: %s ", label, cv.Get(label))
+	}
+
+	return result + "}"
 }
 
 func (cv *CounterVector) Get(key string) *Counter {

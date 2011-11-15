@@ -9,7 +9,7 @@ func WordCombine(a, b string) string {
 }
 
 func WordSplit(w string) (string, string) {
-	result := strings.Split(w, " ", 1)
+	result := strings.SplitN(w, " ", 1)
 
 	if len(result) == 1 {
 		return "", w
